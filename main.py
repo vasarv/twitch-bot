@@ -1,6 +1,12 @@
 import requests
 import json
 
+data_file = 'data.json'
+
+with open(data_file) as f:
+    global config
+    config = json.load(f)
+
 #### TWITCH ####
 TOKEN = config["api"]['token']
 client_secret = config["api"]['client_secret']
