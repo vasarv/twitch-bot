@@ -1,7 +1,6 @@
 # twitch-bot
 
-  python -m venv env
-
-  .\env\Scripts\Activate.ps1
-
-  pip install -r requirements.txt
+## Установка Windows
+    python -m venv env
+    .\env\Scripts\Activate.ps1
+    pip install -r requirements.txt
