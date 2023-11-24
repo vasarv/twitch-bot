@@ -1,19 +1,17 @@
 import requests
 import json
 
-data_file = 'data.json'
-
-with open(data_file) as f:
-    global config
-    config = json.load(f)
+data_file = 'data.json'  # Файл с данными
+config = json.load(open(data_file))  # Загружаем данные в config
 
 #### TWITCH ####
-TOKEN = config["api"]['token']
-client_secret = config["api"]['client_secret']
-client_id = config["api"]["client_id"]
+TOKEN = config["api"]['token']  # Токен доступа
+client_secret = config["api"]['client_secret']  # Секретный ключ
+client_id = config["api"]["client_id"]  # ID клиента
 
-def get_token() -> str:
-  """Функция делает запрос в твич-апи и выозвращает """
+
+def GetToken() -> str:
+    """Функция делает запрос в твич-апи и возвращает токен"""
 
     response = requests.post(
         'https://id.twitch.tv/oauth2/token',
@@ -21,11 +19,80 @@ def get_token() -> str:
             'client_id': client_id,
             'client_secret': client_secret,
             'grant_type': 'client_credentials'
-            }
-    )
+        }
+    )  # делаем запрос на получение токена
 
+    # если ответ получен успешно, то сохраняем токен в переменную TOKEN
     if response.status_code == 200:
         response_json = response.json()
         TOKEN = response_json['access_token']
-    
-    return TOKEN
+
+    return TOKEN  # возвращаем токен
+
+
+def UpdateToken() -> None:
+    """Функция обновляет токен доступа для твич-апи"""
+
+    global TOKEN  # делаем TOKEN глобальной переменной
+
+    config["api"]["token"] = TOKEN = GetToken()  # сохраняем новый токен
+    with open(data_file, 'w') as f:  # открываем файл с данными на запись
+        json.dump(config, f)  # записываем новый токен в файл с данными
+
+
+def DataUpdate() -> None:
+    """Функция обновляет данные"""
+
+    with open(data_file, 'w') as f:
+        json.dump(config, f)  # записываем все изменения в файл с данными
+
+
+def stream_status(channel: str) -> bool and list:
+    """Функция проверяет состояние стрима на канале (стримит или нет)"""
+
+    status = bool(False)
+
+    while (attempts := 0) < 3:
+        try:
+            response = requests.get(f"https://api.twitch.tv/helix/streams?user_login={channel}",
+                                    headers={
+                                        'Client-ID': client_id,
+                                        'Authorization': 'Bearer ' + TOKEN
+            }
+            )  # Запрос к твич-апи (спрашиваем идет ли стрим)
+
+            break
+        # Если не получилось получить ответ, то обновляем токен
+        except UnboundLocalError:
+            UpdateToken()
+
+        attempts += 1  # Увеличиваем счетчик попыток
+
+    # Если получилось получить ответ (200 - успешный запрос и ответ получен)
+    if response.status_code == 200:
+        data = response.json()  # Сохраняем полученные данные
+
+        if len(data['data']) > 0:  # Если есть данные
+            if not status:
+                # Действия по началу стрима
+                ...
+                #
+            status = True
+        else:
+            if status:
+                # Действия по окончанию стрима
+                ...
+                #
+            status = False
+
+        # Возвращаем статус стрима и данные если стрим идет
+        return status, data['data'] if status == True else None
+
+    # Если имя канала не существует (400 - Неверный запрос)
+    elif response.status_code == 400:
+        return NameError('Несуществующее имя канала')
+    # Если токен устарел (401 - Ошибка авторизации/не авторизован)
+    elif response.status_code == 401:
+        UpdateToken()  # Обновляем токен
+    else:
+        return Warning('Неизвестная ошибка')
