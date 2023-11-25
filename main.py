@@ -1,5 +1,22 @@
+pip install aiogram
+from aiogram import Bot, types
+from aiogram.dispatcher import Dispatcher
+from aiogram.utils import executor
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import json
+
+#### TG BOT CONFIG ####
+owners_id = [437660082, 0]  # ID владельцев бота
+bot = Bot(token='6164927415:AAEXyT-bYBfjghxdOCiw0YPd5THdwM_FGqQ')  # Токен бота
+dp = Dispatcher(bot) # Диспетчер
+
+def GetButton(text: str, url: str):
+    keyboard = InlineKeyboardMarkup() # создаем саму клавиатуру
+    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
+    keyboard.add(button)
+
+    await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
 
 data_file = 'data.json'  # Файл с данными
 config = json.load(open(data_file))  # Загружаем данные в config
