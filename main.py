@@ -1,5 +1,12 @@
+from aiogram import Bot, types
+from aiogram.dispatcher import Dispatcher
+from aiogram.utils import executor
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 import requests
 import json
+import asyncio
+
 
 data_file = 'data.json'  # Файл с данными
 config = json.load(open(data_file))  # Загружаем данные в config
@@ -9,6 +16,16 @@ TOKEN = config["api"]['token']  # Токен доступа
 client_secret = config["api"]['client_secret']  # Секретный ключ
 client_id = config["api"]["client_id"]  # ID клиента
 
+#### TG BOT CONFIG ####
+owners_id = [437660082, 1710515030]  # ID владельцев бота (Максим, Вика)
+bot = Bot(token='6164927415:AAEXyT-bYBfjghxdOCiw0YPd5THdwM_FGqQ')  # Токен бота
+dp = Dispatcher(bot) # Диспетчер
+
+def DataUpdate() -> None:
+    """Функция обновляет данные"""
+
+    with open(data_file, 'w') as f:
+        json.dump(config, f)  # записываем все изменения в файл с данными
 
 def GetToken() -> str:
     """Функция делает запрос в твич-апи и возвращает токен"""
@@ -36,15 +53,25 @@ def UpdateToken() -> None:
     global TOKEN  # делаем TOKEN глобальной переменной
 
     config["api"]["token"] = TOKEN = GetToken()  # сохраняем новый токен
-    with open(data_file, 'w') as f:  # открываем файл с данными на запись
-        json.dump(config, f)  # записываем новый токен в файл с данными
+    DataUpdate()
 
 
-def DataUpdate() -> None:
-    """Функция обновляет данные"""
+def GetButton(url: str) -> InlineKeyboardMarkup:
+    """Функция создает и возвращает кнопку"""
 
-    with open(data_file, 'w') as f:
-        json.dump(config, f)  # записываем все изменения в файл с данными
+    keyboard = InlineKeyboardMarkup() # создаем саму клавиатуру
+    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
+    keyboard.add(button)
+
+    return keyboard
+
+def GetButton(url: str) -> InlineKeyboardMarkup:
+    """Функция возвращает клавиатуру"""
+    keyboard = InlineKeyboardMarkup() # создаем саму клавиатуру
+    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
+    keyboard.add(button)
+    
+    return keyboard
 
 
 def stream_status(channel: str) -> bool and list:
@@ -96,3 +123,8 @@ def stream_status(channel: str) -> bool and list:
         UpdateToken()  # Обновляем токен
     else:
         return Warning('Неизвестная ошибка')
+
+# await bot.send_message(chat_id=owner_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
+
+def main():
+    pass
