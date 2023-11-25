@@ -126,15 +126,15 @@ def main():
             if not subs == []:
                 for sub in subs:
                     
-                    # if len(data['data']) > 0:
-                    #     if not status:
-                    #         status = True
-                    #         stream_status(sub)
-                    #         continue
-                    # else:
-                    #     if status:
-                    #         status = False
-                    #         continue
+                    if len(data['data']) > 0:
+                        if not status:
+                            status = True
+                            stream_status(sub)
+                            continue
+                    else:
+                        if status:
+                            status = False
+                            continue
                     
             else:
                 continue
