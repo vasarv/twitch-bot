@@ -125,6 +125,16 @@ def main():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
-                    strream_status(sub)
+                    
+                    # if len(data['data']) > 0:
+                    #     if not status:
+                    #         status = True
+                    #         stream_status(sub)
+                    #         continue
+                    # else:
+                    #     if status:
+                    #         status = False
+                    #         continue
+                    
             else:
                 continue
