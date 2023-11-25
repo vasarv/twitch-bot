@@ -65,14 +65,6 @@ def GetButton(url: str) -> InlineKeyboardMarkup:
 
     return keyboard
 
-def GetButton(url: str) -> InlineKeyboardMarkup:
-    """Функция возвращает клавиатуру"""
-    keyboard = InlineKeyboardMarkup() # создаем саму клавиатуру
-    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
-    keyboard.add(button)
-    
-    return keyboard
-
 
 def stream_status(channel: str) -> bool and list:
     """Функция проверяет состояние стрима на канале (стримит или нет)"""
