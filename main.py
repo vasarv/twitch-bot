@@ -6,6 +6,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import json
 import asyncio
+from time import sleep
 
 
 data_file = 'data.json'  # Файл с данными
@@ -119,4 +120,11 @@ def stream_status(channel: str) -> bool and list:
 # await bot.send_message(chat_id=owner_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
 
 def main():
-    pass
+    while True:
+        for user_id, subs in config["users"].items():
+            user_id = int(user_id)
+            if not subs == []:
+                for sub in subs:
+                    ...
+            else:
+                continue
