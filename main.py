@@ -125,6 +125,6 @@ def main():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
-                    ...
+                    strream_status(sub)
             else:
                 continue
