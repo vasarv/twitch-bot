@@ -128,7 +128,7 @@ def main():
                     status, info = is_online(sub)
                     if len(data['data']) > 0 and sub not in status:
                         status.append(sub)
-                        await bot.send_message(user_id, text, keyboard = GetButton(f"https://twitch.tv/{info[user_name]}"))
+                        await bot.send_message(user_id, f'У стримера {info["user_name"]} идет трансляция {info["title"]} на тему {info["'game_name'"]}.', keyboard = GetButton(f"https://twitch.tv/{info[user_name]}"))
                     elif len(data['data']) == 0 and sub in status:
                         status.remove(sub)
                     # Если стример онлайн и не в списке online:
