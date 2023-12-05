@@ -1,6 +1,6 @@
 from aiogram import Bot, types
-from aiogram.dispatcher import Dispatcher
-from aiogram.utils import executor
+from aiogram import Dispatcher
+#from aiogram import executor
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import requests
@@ -20,7 +20,7 @@ client_id = config["api"]["client_id"]  # ID клиента
 #### TG BOT CONFIG ####
 owners_id = [437660082, 1710515030]  # ID владельцев бота (Максим, Вика)
 bot = Bot(token='6164927415:AAEXyT-bYBfjghxdOCiw0YPd5THdwM_FGqQ')  # Токен бота
-dp = Dispatcher(bot) # Диспетчер
+dp = Dispatcher(bot = bot) # Диспетчер
 
 def DataUpdate() -> None:
     """Функция обновляет данные"""
@@ -119,25 +119,17 @@ def stream_status(channel: str) -> bool and list:
 
 # await bot.send_message(chat_id=owner_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
 
-def main():
+async def main():
     while True:
         for user_id, subs in config["users"].items():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
-                    status, info = is_online(sub)
-                    if len(data['data']) > 0 and sub not in status:
+                    status, info = stream_status(sub)
+                    if len(info['data']) > 0 and sub not in status:
                         status.append(sub)
-                        await bot.send_message(user_id, f'У стримера {info["user_name"]} идет трансляция {info["title"]} на тему {info["'game_name'"]}.', keyboard = GetButton(f"https://twitch.tv/{info[user_name]}"))
-                    elif len(data['data']) == 0 and sub in status:
+                        await bot.send_message(user_id, f'У стримера {info["user_name"]} идет трансляция {info["title"]} на тему {info["game_name"]}.', keyboard = GetButton(f"https://twitch.tv/{info['user_name']}"))
+                    elif len(info['data']) == 0 and sub in status:
                         status.remove(sub)
-                    # Если стример онлайн и не в списке online:
-                    #     Говорим, что стрим начался, добавляем кнопку
-                    #     Добавляем в список online
-                    # Если стример не стримит, но есть в online:
-                    #     Удаляем из списка стримящих
-#                     info["title"] - Название стрима
-# info["user_name"] - ник стримера
-# info["'game_name'"] - тема стрима     
             else:
                 continue
