@@ -125,16 +125,19 @@ def main():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
-                    
-                    if len(data['data']) > 0:
-                        if not status:
-                            status = True
-                            stream_status(sub)
-                            continue
-                    else:
-                        if status:
-                            status = False
-                            continue
-                    
+                    status, info = is_online(sub)
+                    if len(data['data']) > 0 and sub not in status:
+                        status.append(sub)
+                        return f'У стримера {info["user_name"] идет трансляция {info["title"] на тему {info["game_name"]}'
+                    elif len(data['data']) == 0 and sub in status:
+                        status.remove(sub)
+                    # Если стример онлайн и не в списке online:
+                    #     Говорим, что стрим начался, добавляем кнопку
+                    #     Добавляем в список online
+                    # Если стример не стримит, но есть в online:
+                    #     Удаляем из списка стримящих
+#                     info["title"] - Название стрима
+# info["user_name"] - ник стримера
+# info["'game_name'"] - тема стрима     
             else:
                 continue
