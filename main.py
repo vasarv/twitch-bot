@@ -1,6 +1,5 @@
-from aiogram import Bot, types
+from aiogram import Bot
 from aiogram import Dispatcher
-#from aiogram import executor
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import requests
@@ -60,9 +59,11 @@ def UpdateToken() -> None:
 def GetButton(url: str) -> InlineKeyboardMarkup:
     """Функция создает и возвращает кнопку"""
 
-    keyboard = InlineKeyboardMarkup() # создаем саму клавиатуру
-    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
-    keyboard.add(button)
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='СМОТРЕТЬ СТРИМ', url=url) # Кнопка
+        ]
+    ]) # создаем саму клавиатуру
 
     return keyboard
 
@@ -106,7 +107,7 @@ def stream_status(channel: str) -> bool and list:
             status = False
 
         # Возвращаем статус стрима и данные если стрим идет
-        return status, data['data'] if status == True else None
+        return status, data['data'][0] if status == True else None
 
     # Если имя канала не существует (400 - Неверный запрос)
     elif response.status_code == 400:
@@ -117,19 +118,37 @@ def stream_status(channel: str) -> bool and list:
     else:
         return Warning('Неизвестная ошибка')
 
-# await bot.send_message(chat_id=owner_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
+
+async def send(chat_id: int, text: str, url: str):
+    keyboard = InlineKeyboardMarkup()
+    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
+    keyboard.add(button)
+
+    await bot.send_message(chat_id=owner_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
 
 async def main():
+    online = list()
     while True:
         for user_id, subs in config["users"].items():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
+
                     status, info = stream_status(sub)
-                    if len(info['data']) > 0 and sub not in status:
-                        status.append(sub)
-                        await bot.send_message(user_id, f'У стримера {info["user_name"]} идет трансляция {info["title"]} на тему {info["game_name"]}.', keyboard = GetButton(f"https://twitch.tv/{info['user_name']}"))
-                    elif len(info['data']) == 0 and sub in status:
-                        status.remove(sub)
+
+                    if not (info is None) and sub not in online:
+                        keyboard = GetButton(f"https://twitch.tv/{info['user_login']}")
+                        text = f'🔸<b><i>{info["user_name"]}</i></b> стримит🔸\n<b>Название стрима:</b> {info["title"]}\n<b>Тема:</b> {"Общение" if info["game_name"] == "Just Chatting" else info["game_name"]}'
+
+                        await bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
+
+                        online.append(sub)
+                    elif info is None and sub in online:
+                        online.remove(sub)
             else:
                 continue
+
+        sleep(1 * 60)
+
+if __name__ == "__main__":
+    asyncio.run(main())
