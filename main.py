@@ -17,8 +17,7 @@ client_secret = config["api"]['client_secret']  # Секретный ключ
 client_id = config["api"]["client_id"]  # ID клиента
 
 #### TG BOT CONFIG ####
-owners_id = [437660082, 1710515030]  # ID владельцев бота (Максим, Вика)
-bot = Bot(token='6164927415:AAEXyT-bYBfjghxdOCiw0YPd5THdwM_FGqQ')  # Токен бота
+bot = Bot(token=config["tg-bot"]["token"])  # Токен бота
 dp = Dispatcher(bot = bot) # Диспетчер
 
 def DataUpdate() -> None:
