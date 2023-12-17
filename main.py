@@ -1,30 +1,35 @@
-from aiogram import Bot
-from aiogram import Dispatcher
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters.command import Command
+from aiogram import Bot, Dispatcher, types
 
 import requests
 import json
 import asyncio
 from time import sleep
+import multiprocessing
 
+Private = False #False - публичный режим | True - приватный режим
 
-data_file = 'data.json'  # Файл с данными
-config = json.load(open(data_file))  # Загружаем данные в config
+#### DATA ####
+DataFile = 'data.json'  # Файл с данными
+Config = json.load(open(DataFile))  # Загружаем данные в Config
 
 #### TWITCH ####
-TOKEN = config["api"]['token']  # Токен доступа
-client_secret = config["api"]['client_secret']  # Секретный ключ
-client_id = config["api"]["client_id"]  # ID клиента
+TOKEN = Config["api"]['token']  # Токен доступа
+client_secret = Config["api"]['client_secret']  # Секретный ключ
+client_id = Config["api"]["client_id"]  # ID клиента
 
-#### TG BOT CONFIG ####
-bot = Bot(token=config["tg-bot"]["token"])  # Токен бота
+#### TG BOT Config ####
+owners_id = []  # ID владельцев бота (Учитываются, если Private == True)
+bot = Bot(token=Config["tg-bot"]["token"])  # Токен бота
 dp = Dispatcher(bot = bot) # Диспетчер
 
-def DataUpdate() -> None:
-    """Функция обновляет данные"""
 
-    with open(data_file, 'w') as f:
-        json.dump(config, f)  # записываем все изменения в файл с данными
+def DataUpdate(data, file: str = DataFile) -> None:
+    """Функция обновляет данные в БД"""
+
+    with open(file, 'w') as f:
+        json.dump(data, f)  # записываем все изменения в файл с данными
 
 def GetToken() -> str:
     """Функция делает запрос в твич-апи и возвращает токен"""
@@ -51,8 +56,8 @@ def UpdateToken() -> None:
 
     global TOKEN  # делаем TOKEN глобальной переменной
 
-    config["api"]["token"] = TOKEN = GetToken()  # сохраняем новый токен
-    DataUpdate()
+    Config["api"]["token"] = TOKEN = GetToken()  # сохраняем новый токен
+    DataUpdate(Config)
 
 
 def GetButton(url: str) -> InlineKeyboardMarkup:
@@ -65,6 +70,34 @@ def GetButton(url: str) -> InlineKeyboardMarkup:
     ]) # создаем саму клавиатуру
 
     return keyboard
+
+def is_owner(message):
+    id = message.chat.id
+    return True if (Private and id in owners_id) or (Private == False) else False
+
+
+def is_valid(channel: str):
+    while (attempts := 0) < 3:
+        try:
+            response = requests.get(f"https://api.twitch.tv/helix/streams?user_login={channel}",
+                                    headers={
+                                        'Client-ID': client_id,
+                                        'Authorization': 'Bearer ' + TOKEN
+            }
+            )  # Запрос к твич-апи (спрашиваем идет ли стрим)
+
+            break
+        # Если не получилось получить ответ, то обновляем токен
+        except UnboundLocalError:
+            UpdateToken()
+
+        attempts += 1  # Увеличиваем счетчик попыток
+
+    # Если имя канала не существует (400 - Неверный запрос)
+    if response.status_code == 400:
+        return False
+    else:
+        return True
 
 
 def stream_status(channel: str) -> bool and list:
@@ -117,18 +150,84 @@ def stream_status(channel: str) -> bool and list:
     else:
         return Warning('Неизвестная ошибка')
 
+@dp.message(Command('add_sub'))
+async def add_sub(message: types.Message):
+    if is_owner(message):
+        channel = str(message.text[9:])
+        try:
+            if channel == "":
+                await message.reply(f"Укажите название канала!")
+                return
+            elif not is_valid(channel):
+                await message.reply(f"Данного канала не существет!")
+            elif channel in Config["users"][str(message.chat.id)]:
+                await message.reply(f"Данный канал уже в ваших подписках!")
+            else:
+                try:
+                    Config["users"][str(message.chat.id)].append(message.text[9:])
+                    DataUpdate(Config)
 
-async def send(chat_id: int, text: str, url: str):
-    keyboard = InlineKeyboardMarkup()
-    button = InlineKeyboardButton('СМОТРЕТЬ СТРИМ', url=url)
-    keyboard.add(button)
+                    await message.reply(f"Канал успешно добавлен!")
+                except Exception as e:
+                    await message.reply(f"sub adding error! {e}")
+        except KeyError:
+            Config["users"][str(message.chat.id)] = list()
+            await message.reply("Список подписок не найден! Создан новый!")
 
-    await bot.send_message(chat_id=owner_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
+
+@dp.message(Command('rm_sub'))
+async def rm_sub(message: types.Message):
+    if is_owner(message):
+        channel = str(message.text[8:])
+        try:
+            if channel == "":
+                await message.reply(f"Укажите название канала!")
+                return
+            elif not channel in Config["users"][str(message.chat.id)]:
+                await message.reply(f"Данного канала нет в вашем списке подписок!")
+            else:
+                try:
+                    Config["users"][str(message.chat.id)].remove(f"{message.text[8:]}")
+                    DataUpdate(Config)
+
+                    await message.reply(f"Канал успешно удалён!")
+                except Exception as error:
+                    await message.reply(f"sub [{message.text[8:]}] removing error! {error}")
+        except KeyError:
+            Config["users"][str(message.chat.id)] = list()
+            await message.reply("Список подписок не найден! Создан новый!")
+
+@dp.message(Command('list_sub'))
+async def list_sub(message: types.Message):
+    if is_owner(message):
+        try:
+            lst = Config["users"][str(message.chat.id)]
+            
+            if lst == []:
+                await message.reply("Список подписок пуст!")
+            else:
+                await message.reply("\n".join(lst))
+        except KeyError:
+            Config["users"][str(message.chat.id)] = list()
+            await message.reply("Список подписок не найден! Создан новый!")
+
+
+async def bot():
+    print("TG Bot Started!")
+    await dp.start_polling(bot)
+    exit()
+
+
+def run_bot():
+    asyncio.run(bot())
+
 
 async def main():
     online = list()
+    print("Twitch Sendler Sarted!")
     while True:
-        for user_id, subs in config["users"].items():
+        Config = json.load(open(DataFile))
+        for user_id, subs in Config["users"].items():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
@@ -149,5 +248,12 @@ async def main():
 
         sleep(1 * 60)
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        tg_process = multiprocessing.Process(target=run_bot)
+        tg_process.start()
+
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Пока!")
