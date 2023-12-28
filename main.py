@@ -167,8 +167,7 @@ async def add_sub(message: types.Message):
                 await message.reply(f"Данный канал уже в ваших подписках!")
             else:
                 try:
-                    Config["users"][str(message.chat.id)].append(
-                        message.text[9:])
+                    Config["users"][str(message.chat.id)].append(message.text[9:])
                     DataUpdate(Config)
 
                     await message.reply(f"Канал успешно добавлен!")
@@ -191,8 +190,7 @@ async def rm_sub(message: types.Message):
                 await message.reply(f"Данного канала нет в вашем списке подписок!")
             else:
                 try:
-                    Config["users"][str(message.chat.id)].remove(
-                        f"{message.text[8:]}")
+                    Config["users"][str(message.chat.id)].remove(f"{message.text[8:]}")
                     DataUpdate(Config)
 
                     await message.reply(f"Канал успешно удалён!")
@@ -236,8 +234,7 @@ async def twitch_watch():
                     status, info = stream_status(sub)
 
                     if not (info is None) and sub not in online:
-                        keyboard = GetButton(
-                            f"https://twitch.tv/{info['user_login']}")
+                        keyboard = GetButton(f"https://twitch.tv/{info['user_login']}")
                         text = f'🔸<b><i>{info["user_name"]}</i></b> стримит🔸\n<b>Название стрима:</b> {info["title"]}\n<b>Тема:</b> {"Общение" if info["game_name"] == "Just Chatting" else info["game_name"]}'
 
                         await bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
