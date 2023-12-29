@@ -1,1 +1,9 @@
-...
+{
+  "api": {
+    "client_id": "corqtmslhrhetc6zzaw31sv7braew6",
+    "client_secret": "mly3mk8vpec2v83av67raq7hjownpg",
+    "token": "89dr7w9rv2v7lp6z4sr8daogze1t0f"
+  },
+  "tg-bot": { "token": "6164927415:AAEXyT-bYBfjghxdOCiw0YPd5THdwM_FGqQ" },
+  "users": { "437660082": ["kussia88", "toosefn"] }
+}

@@ -5,8 +5,7 @@ from aiogram import Bot, Dispatcher, types
 import requests
 import json
 import asyncio
-from time import sleep
-import multiprocessing
+from loguru import logger as log
 
 Private = False  # False - публичный режим | True - приватный режим
 
@@ -21,6 +20,7 @@ client_id = Config["api"]["client_id"]  # ID клиента
 
 #### TG BOT Config ####
 owners_id = []  # ID владельцев бота (Учитываются, если Private == True)
+PREFIX = "/"  # Префикс команд бота
 bot = Bot(token=Config["tg-bot"]["token"])  # Токен бота
 dp = Dispatcher(bot=bot)  # Диспетчер
 
@@ -32,7 +32,7 @@ def DataUpdate(data, file: str = DataFile) -> None:
         json.dump(data, f)  # записываем все изменения в файл с данными
 
 
-def GetToken() -> str:
+def GetToken() -> TOKEN:
     """Функция делает запрос в твич-апи и возвращает токен"""
 
     response = requests.post(
@@ -48,6 +48,9 @@ def GetToken() -> str:
     if response.status_code == 200:
         response_json = response.json()
         TOKEN = response_json['access_token']
+    else:
+        log.error(f"Get token error! Response code: {response.status_code}")
+        return
 
     return TOKEN  # возвращаем токен
 
@@ -68,17 +71,20 @@ def GetButton(url: str) -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text='СМОТРЕТЬ СТРИМ', url=url)  # Кнопка
         ]
-    ])  # создаем саму клавиатуру
+    ])  # создаем саму кнопку
 
     return keyboard
 
 
-def is_owner(message):
-    id = message.chat.id
+def is_owner(id: int) -> bool:
+    """Проверяет является ли пользователь владельцем бота"""
+
     return True if (Private and id in owners_id) or (Private == False) else False
 
 
-def is_valid(channel: str):
+def is_valid(channel: str) -> bool:
+    """Проверяет существует ли канал на твиче (валиден или нет)"""
+
     while (attempts := 0) < 3:
         try:
             response = requests.get(f"https://api.twitch.tv/helix/streams?user_login={channel}",
@@ -128,46 +134,44 @@ def stream_status(channel: str) -> bool and list:
         data = response.json()  # Сохраняем полученные данные
 
         if len(data['data']) > 0:  # Если есть данные
-            if not status:
-                # Действия по началу стрима
-                ...
-                #
             status = True
         else:
-            if status:
-                # Действия по окончанию стрима
-                ...
-                #
             status = False
 
         # Возвращаем статус стрима и данные если стрим идет
-        return status, data['data'][0] if status == True else None
+        return status, (data['data'][0] if status == True else None)
 
     # Если имя канала не существует (400 - Неверный запрос)
     elif response.status_code == 400:
-        return NameError('Несуществующее имя канала')
+        log.error("Channel not found!")
+        return False, None
     # Если токен устарел (401 - Ошибка авторизации/не авторизован)
     elif response.status_code == 401:
+        log.info(f"Token expired! Updating token...")
         UpdateToken()  # Обновляем токен
     else:
-        return Warning('Неизвестная ошибка')
+        log.error(f"Unknown error! Response code: {response.status_code}")
+        return False, None
 
 
 @dp.message(Command('add_sub'))
-async def add_sub(message: types.Message):
-    if is_owner(message):
+async def add_sub(message: types.Message) -> None:
+    """Функция добавляет канал в подписки"""
+
+    if is_owner(message.chat.id):
         channel = str(message.text[9:])
         try:
             if channel == "":
                 await message.reply(f"Укажите название канала!")
                 return
             elif not is_valid(channel):
-                await message.reply(f"Данного канала не существет!")
+                await message.reply(f"Данного канала не существует!")
             elif channel in Config["users"][str(message.chat.id)]:
                 await message.reply(f"Данный канал уже в ваших подписках!")
             else:
                 try:
-                    Config["users"][str(message.chat.id)].append(message.text[9:])
+                    Config["users"][str(message.chat.id)].append(
+                        message.text[9:])
                     DataUpdate(Config)
 
                     await message.reply(f"Канал успешно добавлен!")
@@ -178,9 +182,11 @@ async def add_sub(message: types.Message):
             await message.reply("Список подписок не найден! Создан новый!")
 
 
-@dp.message(Command('rm_sub'))
-async def rm_sub(message: types.Message):
-    if is_owner(message):
+@dp.message(Command(commands='rm_sub', prefix=PREFIX))
+async def rm_sub(message: types.Message) -> None:
+    """Функция удаляет канал из подписок"""
+
+    if is_owner(message.chat.id):
         channel = str(message.text[8:])
         try:
             if channel == "":
@@ -190,7 +196,8 @@ async def rm_sub(message: types.Message):
                 await message.reply(f"Данного канала нет в вашем списке подписок!")
             else:
                 try:
-                    Config["users"][str(message.chat.id)].remove(f"{message.text[8:]}")
+                    Config["users"][str(message.chat.id)].remove(
+                        f"{message.text[8:]}")
                     DataUpdate(Config)
 
                     await message.reply(f"Канал успешно удалён!")
@@ -201,46 +208,50 @@ async def rm_sub(message: types.Message):
             await message.reply("Список подписок не найден! Создан новый!")
 
 
-@dp.message(Command('list_sub'))
-async def list_sub(message: types.Message):
-    if is_owner(message):
-        try:
-            lst = Config["users"][str(message.chat.id)]
+@dp.message(Command(commands='list_sub', prefix=PREFIX))
+async def list_sub(message: types.Message) -> None:
+    """Функция выводит список подписок в телеграм"""
 
-            if lst == []:
+    if is_owner(message.chat.id):
+        try:
+            list_sub = Config["users"][str(message.chat.id)]
+
+            if list_sub == []:
                 await message.reply("Список подписок пуст!")
             else:
-                await message.reply("\n".join(lst))
+                await message.reply("\n".join(list_sub))
         except KeyError:
             Config["users"][str(message.chat.id)] = list()
             await message.reply("Список подписок не найден! Создан новый!")
 
 
-async def tg_bot():
-    print("TG Bot Started!")
+async def tg_bot() -> None:
+    log.info("Telegram Bot Started! (BOT-lib: aiogram)")
     await dp.start_polling(bot)
 
 
-async def twitch_watch():
+async def twitch_watch() -> None:
     online = list()
-    print("Twitch Sendler Sarted!")
+
+    log.info("Twitch Watch Sarted!")
+
     while True:
         Config = json.load(open(DataFile))
         for user_id, subs in Config["users"].items():
             user_id = int(user_id)
             if not subs == []:
                 for sub in subs:
-
                     status, info = stream_status(sub)
 
-                    if not (info is None) and sub not in online:
-                        keyboard = GetButton(f"https://twitch.tv/{info['user_login']}")
+                    if (not (info == None and status == False) and sub not in online):
+                        keyboard = GetButton(
+                            f"https://twitch.tv/{info['user_login']}")
                         text = f'🔸<b><i>{info["user_name"]}</i></b> стримит🔸\n<b>Название стрима:</b> {info["title"]}\n<b>Тема:</b> {"Общение" if info["game_name"] == "Just Chatting" else info["game_name"]}'
 
                         await bot.send_message(chat_id=user_id, text=text, parse_mode="HTML", disable_web_page_preview=True, reply_markup=keyboard)
 
                         online.append(sub)
-                    elif info is None and sub in online:
+                    elif (info == None and sub in online):
                         online.remove(sub)
             else:
                 continue
@@ -249,12 +260,14 @@ async def twitch_watch():
 
 
 async def main():
-    await asyncio.gather(twitch_watch(), tg_bot())
-    exit()
+    await asyncio.gather(twitch_watch(), tg_bot()) # запускаем все задачи
+
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Пока!")
+        log.info("Bye!")
         exit()
+    except Exception as e:
+        log.error(e)
